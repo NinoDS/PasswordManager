@@ -1,54 +1,122 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO.Compression;
+using System.IO;
+using System.Net.Mime;
+using System.Security.Cryptography;
 
 namespace PasswordManager
 {
-    class Program
+    static class Program
     {
+        //CHAR PREFABS
         private static string digits = "1234567890";
         private static string lowerCaseLetters = "abcdefghijklmnopqrstuvwxyz";
         private static string upperCaseLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         private static string specialChars = "~!@#$%^*-_=+[{]}/;:,.?";
-        public static Command GENERATE_PASSWORD;
-        public static List<object> commandList;
-        public static string input;
-        
-        static void Main(string[] args)
-        {
-            input = Console.ReadLine();
-            GENERATE_PASSWORD = new Command("generate_password", "Generates a safe password", "generate_password",
-                () => CreatePassword(10));
 
-            commandList = new List<object>
-            {
-                GENERATE_PASSWORD
-            };
+        private static string _input;
+
+        //COMMANDS
+        private static Command<int> _generatePassword;
+        private static Command _help;
+        private static Command<string> _loadPassword;
+        private static Command<string, string> _savePassword;
+        private static List<object> _commandList;
+        
+
+        static void Main()
+        {
+
             
-            HandleInput();
+            _generatePassword = new Command<int>("generate_password", "Generates password with the given length", "generate_password <password_length>",
+                CreatePassword);
+            _loadPassword = new Command<string>("load_password", "Load specific password based on user name",
+                "load_password <username>", LoadPassword);
+            _savePassword = new Command<string, string>("save_password", "Save password with username",
+                "save_password <password>, <username>", SavePassword);
+            _help = new Command("help", "Shows all possible commands", "help",
+                ShowHelp);
+            
+
+            _commandList = new List<object>
+            {
+                _generatePassword,
+                _loadPassword,
+                _savePassword,
+                _help
+            };
+
+            while (true)
+            {
+                _input = Console.ReadLine();
+                HandleInput();
+            }
+            
         }
 
-        public static void HandleInput()
+        private static void HandleInput()
         {
-            for (int i = 0; i < commandList.Count; i++)
+            string[] properties = _input.Split(" ");
+            
+            for (int i = 0; i < _commandList.Count; i++)
             {
-                CommandBase commandBase = commandList[i] as CommandBase;
+                CommandBase commandBase = _commandList[i] as CommandBase;
 
-                if (input.Contains(commandBase.CommandId))
+                if (_input.Contains(commandBase?.CommandId ?? string.Empty))
                 {
 
-                    if (commandList[i] as Command != null)
+                    if (_commandList[i] is Command)
                     {
-                        (commandList[i] as Command).Invoke();
+                        (_commandList[i] as Command)?.Invoke();
                     }
-                    
+                    else if (_commandList[i] is Command<int>)
+                    {
+                        (_commandList[i] as Command<int>)?.Invoke(int.Parse(properties[1]));
+                    }
+                    else if (_commandList[i] is Command<string>)
+                    {
+                        (_commandList[i] as Command<string>)?.Invoke(properties[1]);
+                    }
+                    else if (_commandList[i] is Command<string, string>)
+                    {
+                        (_commandList[i] as Command<string, string>)?.Invoke(properties[1], properties[2]);
+                    }
                 }
+ 
             }
         }
 
-        static void Interpreter(string text)
+        static void SavePassword(string password, string userName)
         {
+            IO io = new IO();
             
+            io.Write(password + "-" + userName, Directory.GetCurrentDirectory() + "\\password.txt", false);
+        }
+
+        static void LoadPassword(string _userName)
+        {
+            IO io = new IO();
+            List<string> textList;
+            string text = io.Read(Directory.GetCurrentDirectory() + "\\password.txt");
+            text.Remove(text.Length - 1);
+            string[] textArray = text.Split(" ");
+
+            for (int i = 0; i < textArray.Length; i++)
+            {
+                if (textArray[i].Length > 0)
+                {
+                    string s = textArray[i];
+                    string password = s.Split("-")[0];
+                    string userName = s.Split("-")[1];
+                    
+                    if (userName == _userName)
+                    {
+                        Console.WriteLine(password);
+                        return;
+                    }
+                }
+
+            }
         }
 
         static void CreatePassword(int passwordLength)
@@ -62,16 +130,15 @@ namespace PasswordManager
             Console.WriteLine(password);
         }
 
-        static void CheckPassword(string password)
+        private static void CheckPassword(string password)
         {
             int hasUpperCaseLetters = 0, hasLowerCaseLetters = 0, hasNumbers = 0, hasSymbols = 0;
-            string chars = digits + lowerCaseLetters + upperCaseLetters + specialChars;
             if (password.Length < 8)
             {
                 Console.WriteLine("Password is unsafe!");
             }
 
-            foreach (var i in password)
+            foreach (char i in password)
             {
                 if (digits.Contains(i))
                 {
@@ -94,6 +161,15 @@ namespace PasswordManager
             Console.WriteLine(hasNumbers + hasLowerCaseLetters + hasUpperCaseLetters + hasSymbols >= 3
                 ? "Password is safe!"
                 : "Password is unsafe!");
+        }
+
+        static void ShowHelp()
+        {
+            for (int i = 0; i < _commandList.Count; i++)
+            {
+                CommandBase command = _commandList[i] as CommandBase;
+                Console.WriteLine(command?.CommandFormat + " - " + command?.CommandDescription);
+            }
         }
     }
 

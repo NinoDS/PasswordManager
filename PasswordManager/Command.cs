@@ -4,35 +4,59 @@ namespace PasswordManager
 {
     public class CommandBase
     {
-        private string _commandId;
-        private string _commandDescription;
-        private string _commandFormat;
+        public string CommandId { get; }
 
-        public string CommandId => _commandId;
+        public string CommandDescription { get; }
 
-        public string CommandDescription => _commandDescription;
+        public string CommandFormat { get; }
 
-        public string CommandFormat => _commandFormat;
-
-        public CommandBase(string id, string description, string format)
+        protected CommandBase(string id, string description, string format)
         {
-            _commandId = id;
-            _commandDescription = description;
-            _commandFormat = format;
+            CommandId = id;
+            CommandDescription = description;
+            CommandFormat = format;
         }
     }
 
     public class Command: CommandBase
     {
-        private Action command;
+        private readonly Action _command;
         public Command(string id, string description, string format, Action command) : base(id, description, format)
         {
-            this.command = command;
+            this._command = command;
         }
 
         public void Invoke()
         {
-            command.Invoke();
+            _command.Invoke();
+        }
+    }
+    
+    public class Command<T1>: CommandBase
+    {
+        private readonly Action<T1> _command;
+        public Command(string id, string description, string format, Action<T1> command) : base(id, description, format)
+        {
+            this._command = command;
+        }
+
+        public void Invoke(T1 value)
+        {
+            _command.Invoke(value);
+        }
+    }
+    
+    public class Command<T1, T2>: CommandBase
+    {
+        private readonly Action<T1, T2> _command;
+        public Command(string id, string description, string format, Action<T1, T2> command) : base(id, description, format)
+        {
+            this._command = command;
+        }
+
+        public void Invoke(T1 value0, T2 value1)
+        {
+            _command.Invoke(value0, value1);
         }
     }
 }
