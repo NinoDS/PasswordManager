@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Mime;
-using System.Security.Cryptography;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Media;
 
 namespace PasswordManager
 {
@@ -15,6 +17,9 @@ namespace PasswordManager
         private static string specialChars = "~!@#$%^*-_=+[{]}/;:,.?";
 
         private static string _input;
+        private static string PasswordPath;
+        private static string CheckHashPath;
+        private static byte[] checkHash;
 
         //COMMANDS
         private static Command<int> _generatePassword;
@@ -27,7 +32,27 @@ namespace PasswordManager
         static void Main()
         {
 
-            
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.BackgroundColor = ConsoleColor.Black;
+            Environment.SetEnvironmentVariable("$MaximumHistoryCount", "0");
+
+            Cryptography cryptography = new Cryptography();
+            IO io = new IO();
+            CheckHashPath = Directory.GetCurrentDirectory() + "\\checkhash";
+            if (!File.Exists(CheckHashPath))
+            {
+                Console.WriteLine("Enter master password!");
+                io.WriteBytes(cryptography.CreateHash($"Ich bin {Console.ReadLine()}, der große König. - Und ich Diogenes, der Hund."), CheckHashPath); 
+                Console.WriteLine("Master password set");
+                Console.Clear();
+            }
+
+            checkHash = io.ReadBytes(CheckHashPath);
+
+            PasswordPath = Directory.GetCurrentDirectory() + "\\password.txt";
+
+
             _generatePassword = new Command<int>("generate_password", "Generates password with the given length", "generate_password <password_length>",
                 CreatePassword);
             _loadPassword = new Command<string>("load_password", "Load specific password based on user name",
@@ -53,6 +78,7 @@ namespace PasswordManager
             }
             
         }
+
 
         private static void HandleInput()
         {
@@ -88,16 +114,43 @@ namespace PasswordManager
 
         static void SavePassword(string password, string userName)
         {
+
+            Console.WriteLine("Input master password");
+            Cryptography cryptography = new Cryptography();
+            string input = Console.ReadLine();
+            
+            if (!cryptography.CreateHash($"Ich bin {input}, der große König. - Und ich Diogenes, der Hund.").SequenceEqual(checkHash))
+            {
+                Console.WriteLine("Wrong Password");
+                Console.WriteLine(Convert.ToBase64String(cryptography.CreateHash($"Ich bin {input}, der große König. - Und ich Diogenes, der Hund.")));
+                return;
+            }
+            Console.SetCursorPosition(0, Console.CursorTop - 1);
+            Console.WriteLine(new string('*', input.Length));
+
             IO io = new IO();
             
-            io.Write(password + "-" + userName, Directory.GetCurrentDirectory() + "\\password.txt", false);
+            io.WriteEncrypted(password + "-" + userName, PasswordPath, cryptography.CreateHash(input));
         }
 
         static void LoadPassword(string _userName)
         {
+            Console.WriteLine("Input master password");
+            Cryptography cryptography = new Cryptography();
+            string input = Console.ReadLine();
+            
+            if (!cryptography.CreateHash($"Ich bin {input}, der große König. - Und ich Diogenes, der Hund.").SequenceEqual(checkHash))
+            {
+                Console.WriteLine("Wrong Password");
+                return;
+            }
+
+            PasswordReplacer pr1 = new PasswordReplacer();
+            pr1.ReplacePassword(Console.CursorTop - 1, 0, input.Length);
+
             IO io = new IO();
             List<string> textList;
-            string text = io.Read(Directory.GetCurrentDirectory() + "\\password.txt");
+            string text = io.ReadEncrypted(PasswordPath, cryptography.CreateHash(input));
             text.Remove(text.Length - 1);
             string[] textArray = text.Split(" ");
 
@@ -111,7 +164,9 @@ namespace PasswordManager
                     
                     if (userName == _userName)
                     {
+                        PasswordReplacer pr2 = new PasswordReplacer();
                         Console.WriteLine(password);
+                        pr2.ReplacePassword(Console.CursorTop - 1, 10000, password.Length);
                         return;
                     }
                 }
@@ -171,6 +226,19 @@ namespace PasswordManager
                 Console.WriteLine(command?.CommandFormat + " - " + command?.CommandDescription);
             }
         }
+    }
+
+    class PasswordReplacer
+    {
+        public async void ReplacePassword(int curserLine, int delay, int passwordlength)
+        {
+            await Task.Delay(delay);
+            Console.SetCursorPosition(0, curserLine);
+            Console.WriteLine(new string('*', passwordlength));
+            Console.SetCursorPosition(Console.CursorLeft, Console.CursorTop);
+        }
+        
+
     }
 
 }
