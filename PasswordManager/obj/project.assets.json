@@ -8,28 +8,26 @@
     "net5.0": []
   },
   "packageFolders": {
-    "C:\\Users\\temp\\.nuget\\packages\\": {},
-    "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder": {}
+    "C:\\Users\\JH\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\temp\\RiderProjects\\PasswordManager\\PasswordManager\\PasswordManager.csproj",
+      "projectUniqueName": "C:\\Users\\JH\\RiderProjects\\PasswordManager\\PasswordManager\\PasswordManager.csproj",
       "projectName": "PasswordManager",
-      "projectPath": "C:\\Users\\temp\\RiderProjects\\PasswordManager\\PasswordManager\\PasswordManager.csproj",
-      "packagesPath": "C:\\Users\\temp\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\temp\\RiderProjects\\PasswordManager\\PasswordManager\\obj\\",
+      "projectPath": "C:\\Users\\JH\\RiderProjects\\PasswordManager\\PasswordManager\\PasswordManager.csproj",
+      "packagesPath": "C:\\Users\\JH\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\JH\\RiderProjects\\PasswordManager\\PasswordManager\\obj\\",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
-      ],
       "configFilePaths": [
-        "C:\\Users\\temp\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\JH\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net5.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {

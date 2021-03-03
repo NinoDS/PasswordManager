@@ -59,4 +59,19 @@ namespace PasswordManager
             _command.Invoke(value0, value1);
         }
     }
+    
+    public class Command<T1, T2, T3>: CommandBase
+    {
+        private readonly Action<T1, T2, T3> _command;
+        public Command(string id, string description, string format, Action<T1, T2, T3> command) : base(id, description, format)
+        {
+            this._command = command;
+        }
+
+        public void Invoke(T1 value0, T2 value1, T3 value2)
+        {
+            _command.Invoke(value0, value1, value2);
+        }
+    }
+    
 }

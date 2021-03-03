@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Media;
 
 namespace PasswordManager
 {
@@ -17,47 +15,51 @@ namespace PasswordManager
         private static string specialChars = "~!@#$%^*-_=+[{]}/;:,.?";
 
         private static string _input;
-        private static string PasswordPath;
-        private static string CheckHashPath;
-        private static byte[] checkHash;
+        private static string _passwordPath;
+        private static string _checkHashPath;
+        private static byte[] _checkHash;
 
         //COMMANDS
+        private static Command _changePassword;
         private static Command<int> _generatePassword;
         private static Command _help;
         private static Command<string> _loadPassword;
-        private static Command<string, string> _savePassword;
+        private static Command<string, string, string> _savePassword;
+        private static Command<string> _checkPassword;
+        
         private static List<object> _commandList;
         
 
         static void Main()
         {
-
+            Directory.CreateDirectory($"C:\\Users\\{Environment.UserName}\\AppData\\Roaming\\PasswordManager");
 
             Console.ForegroundColor = ConsoleColor.Green;
             Console.BackgroundColor = ConsoleColor.Black;
-            Environment.SetEnvironmentVariable("$MaximumHistoryCount", "0");
 
             Cryptography cryptography = new Cryptography();
             IO io = new IO();
-            CheckHashPath = Directory.GetCurrentDirectory() + "\\checkhash";
-            if (!File.Exists(CheckHashPath))
+            _checkHashPath = $"C:\\Users\\{Environment.UserName}\\AppData\\Roaming\\PasswordManager\\checkhash";
+            if (!File.Exists(_checkHashPath))
             {
                 Console.WriteLine("Enter master password!");
-                io.WriteBytes(cryptography.CreateHash($"Ich bin {Console.ReadLine()}, der große König. - Und ich Diogenes, der Hund."), CheckHashPath); 
+                io.WriteBytes(cryptography.CreateHash($"Ich bin {Console.ReadLine()}, der große König. - Und ich Diogenes, der Hund."), _checkHashPath); 
                 Console.WriteLine("Master password set");
                 Console.Clear();
             }
 
-            checkHash = io.ReadBytes(CheckHashPath);
+            _checkHash = io.ReadBytes(_checkHashPath);
 
-            PasswordPath = Directory.GetCurrentDirectory() + "\\password.txt";
+            _passwordPath = $"C:\\Users\\{Environment.UserName}\\AppData\\Roaming\\PasswordManager\\password";
 
-
+            _changePassword = new Command("change_password", "Change master password", "change_password",
+                ChangePassword);
+            _checkPassword = new Command<string>("check_password", "Checks if a password is safe", "check_password <password>", CheckPassword);
             _generatePassword = new Command<int>("generate_password", "Generates password with the given length", "generate_password <password_length>",
                 CreatePassword);
-            _loadPassword = new Command<string>("load_password", "Load specific password based on user name",
-                "load_password <username>", LoadPassword);
-            _savePassword = new Command<string, string>("save_password", "Save password with username",
+            _loadPassword = new Command<string>("load_password", "Load specific password based on user name or website",
+                "load_password <username or website>", LoadPassword);
+            _savePassword = new Command<string, string, string>("save_password", "Save password with username",
                 "save_password <password>, <username>", SavePassword);
             _help = new Command("help", "Shows all possible commands", "help",
                 ShowHelp);
@@ -65,10 +67,12 @@ namespace PasswordManager
 
             _commandList = new List<object>
             {
+                _changePassword,
                 _generatePassword,
                 _loadPassword,
                 _savePassword,
-                _help
+                _help,
+                _checkPassword
             };
 
             while (true)
@@ -107,71 +111,114 @@ namespace PasswordManager
                     {
                         (_commandList[i] as Command<string, string>)?.Invoke(properties[1], properties[2]);
                     }
+                    else if (_commandList[i] is Command<string, string, string>)
+                    {
+                        (_commandList[i] as Command<string, string, string>)?.Invoke(properties[1], properties[2], properties[3]);
+                    }
                 }
  
             }
         }
 
-        static void SavePassword(string password, string userName)
+        static void SavePassword(string password, string userName, string website)
         {
-
+            Console.WriteLine("Saving...");
             Console.WriteLine("Input master password");
             Cryptography cryptography = new Cryptography();
             string input = Console.ReadLine();
             
-            if (!cryptography.CreateHash($"Ich bin {input}, der große König. - Und ich Diogenes, der Hund.").SequenceEqual(checkHash))
+            if (!cryptography.CreateHash($"Ich bin {input}, der große König. - Und ich Diogenes, der Hund.").SequenceEqual(_checkHash))
             {
                 Console.WriteLine("Wrong Password");
-                Console.WriteLine(Convert.ToBase64String(cryptography.CreateHash($"Ich bin {input}, der große König. - Und ich Diogenes, der Hund.")));
                 return;
             }
             Console.SetCursorPosition(0, Console.CursorTop - 1);
-            Console.WriteLine(new string('*', input.Length));
+            if (input != null)
+            {
+                Console.WriteLine(new string('*', input.Length));
 
-            IO io = new IO();
-            
-            io.WriteEncrypted(password + "-" + userName, PasswordPath, cryptography.CreateHash(input));
+                IO io = new IO();
+
+                io.WriteEncrypted(password + "-" + userName + "-" + website, _passwordPath,
+                    cryptography.CreateHash(input));
+            }
         }
 
-        static void LoadPassword(string _userName)
+        static void LoadPassword(string userNameOrWebsite)
         {
             Console.WriteLine("Input master password");
             Cryptography cryptography = new Cryptography();
             string input = Console.ReadLine();
             
-            if (!cryptography.CreateHash($"Ich bin {input}, der große König. - Und ich Diogenes, der Hund.").SequenceEqual(checkHash))
+            if (!cryptography.CreateHash($"Ich bin {input}, der große König. - Und ich Diogenes, der Hund.").SequenceEqual(_checkHash))
             {
                 Console.WriteLine("Wrong Password");
                 return;
             }
 
             PasswordReplacer pr1 = new PasswordReplacer();
-            pr1.ReplacePassword(Console.CursorTop - 1, 0, input.Length);
-
-            IO io = new IO();
-            List<string> textList;
-            string text = io.ReadEncrypted(PasswordPath, cryptography.CreateHash(input));
-            text.Remove(text.Length - 1);
-            string[] textArray = text.Split(" ");
-
-            for (int i = 0; i < textArray.Length; i++)
+            if (input != null)
             {
-                if (textArray[i].Length > 0)
+                pr1.ReplacePassword(Console.CursorTop - 1, 0, 0, input.Length);
+
+                IO io = new IO();
+                string text = io.ReadEncrypted(_passwordPath, cryptography.CreateHash(input));
+                text.Remove(text.Length - 1);
+                string[] textArray = text.Split(" ");
+
+                foreach (var t in textArray)
                 {
-                    string s = textArray[i];
-                    string password = s.Split("-")[0];
-                    string userName = s.Split("-")[1];
-                    
-                    if (userName == _userName)
+                    if (t.Length > 0)
                     {
-                        PasswordReplacer pr2 = new PasswordReplacer();
-                        Console.WriteLine(password);
-                        pr2.ReplacePassword(Console.CursorTop - 1, 10000, password.Length);
-                        return;
+                        string s = t;
+                        string password = s.Split("-")[0];
+                        string userName = s.Split("-")[1];
+                        string website = s.Split("-")[2];
+
+                        if (userName == userNameOrWebsite || website == userNameOrWebsite)
+                        {
+                            PasswordReplacer pr2 = new PasswordReplacer();
+                            Console.WriteLine(website + ": " + password);
+
+                            pr2.ReplacePassword(Console.CursorTop - 1, website.Length + 2, 10000, password.Length);
+                            return;
+                        }
                     }
                 }
-
             }
+        }
+
+        static void ChangePassword()
+        {
+            Console.WriteLine("Input old master password");
+            Cryptography cryptography = new Cryptography();
+            string input = Console.ReadLine();
+            
+            if (!cryptography.CreateHash($"Ich bin {input}, der große König. - Und ich Diogenes, der Hund.").SequenceEqual(_checkHash))
+            {
+                Console.WriteLine("Wrong Password");
+                return;
+            }
+
+            IO io = new IO();
+            
+            Console.WriteLine("Input new master password");
+            string newPassword = Console.ReadLine();
+            
+            io.WriteBytes(cryptography.CreateHash($"Ich bin {newPassword}, der große König. - Und ich Diogenes, der Hund."), _checkHashPath); 
+            
+            
+            byte[] oldKey = cryptography.CreateHash(input);
+            byte[] newKey = cryptography.CreateHash(newPassword);
+            
+
+            if (File.Exists(_passwordPath))
+            {
+                string content = io.ReadEncrypted(_passwordPath, oldKey);
+                io.Write(cryptography.Encrypt(content, newKey), _passwordPath, true);
+            }
+            _checkHash = io.ReadBytes(_checkHashPath);
+            Console.WriteLine("Master password set");
         }
 
         static void CreatePassword(int passwordLength)
@@ -187,10 +234,12 @@ namespace PasswordManager
 
         private static void CheckPassword(string password)
         {
+            Console.WriteLine("Checking password...");
             int hasUpperCaseLetters = 0, hasLowerCaseLetters = 0, hasNumbers = 0, hasSymbols = 0;
             if (password.Length < 8)
             {
                 Console.WriteLine("Password is unsafe!");
+                return;
             }
 
             foreach (char i in password)
@@ -230,14 +279,13 @@ namespace PasswordManager
 
     class PasswordReplacer
     {
-        public async void ReplacePassword(int curserLine, int delay, int passwordlength)
+        public async void ReplacePassword(int curserLine, int lineOffset, int delay, int passwordlength)
         {
             await Task.Delay(delay);
-            Console.SetCursorPosition(0, curserLine);
+            Console.SetCursorPosition(lineOffset, curserLine);
             Console.WriteLine(new string('*', passwordlength));
             Console.SetCursorPosition(Console.CursorLeft, Console.CursorTop);
         }
-        
 
     }
 
