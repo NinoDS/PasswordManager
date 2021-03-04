@@ -26,6 +26,7 @@ namespace PasswordManager
         private static Command<string> _loadPassword;
         private static Command<string, string, string> _savePassword;
         private static Command<string> _checkPassword;
+        private static Command _load_all;
         
         private static List<object> _commandList;
         
@@ -52,6 +53,7 @@ namespace PasswordManager
 
             _passwordPath = $"C:\\Users\\{Environment.UserName}\\AppData\\Roaming\\PasswordManager\\password";
 
+            _load_all = new Command("load_all", "Loads all passwords", "load_password", LoadAllPasswords);
             _changePassword = new Command("change_password", "Change master password", "change_password",
                 ChangePassword);
             _checkPassword = new Command<string>("check_password", "Checks if a password is safe", "check_password <password>", CheckPassword);
@@ -67,6 +69,7 @@ namespace PasswordManager
 
             _commandList = new List<object>
             {
+                _load_all,
                 _changePassword,
                 _generatePassword,
                 _loadPassword,
@@ -144,6 +147,47 @@ namespace PasswordManager
             }
         }
 
+        static void LoadAllPasswords()
+        {
+            Console.WriteLine("Input master password");
+            Cryptography cryptography = new Cryptography();
+            string input = Console.ReadLine();
+            
+            if (!cryptography.CreateHash($"Ich bin {input}, der große König. - Und ich Diogenes, der Hund.").SequenceEqual(_checkHash))
+            {
+                Console.WriteLine("Wrong Password");
+                return;
+            }
+
+            PasswordReplacer pr1 = new PasswordReplacer();
+            if (input != null)
+            {
+                pr1.ReplacePassword(Console.CursorTop - 1, 0, 0, input.Length);
+
+                IO io = new IO();
+                string text = io.ReadEncrypted(_passwordPath, cryptography.CreateHash(input));
+                text.Remove(text.Length - 1);
+                string[] textArray = text.Split(" ");
+
+                foreach (var t in textArray)
+                {
+                    if (t.Length > 0)
+                    {
+                        string s = t;
+                        string password = s.Split("-")[0];
+                        string userName = s.Split("-")[1];
+                        string website = s.Split("-")[2];
+                        
+                        PasswordReplacer pr2 = new PasswordReplacer();
+                        Console.WriteLine($"Username: \"{userName}\", Website: \"{website}\" Password: \"{password}\"");
+
+                        pr2.ReplacePassword(Console.CursorTop - 1, 37 + userName.Length + website.Length, 10000, password.Length);
+
+                    }
+                }
+            }
+        }
+
         static void LoadPassword(string userNameOrWebsite)
         {
             Console.WriteLine("Input master password");
@@ -178,7 +222,7 @@ namespace PasswordManager
                         if (userName == userNameOrWebsite || website == userNameOrWebsite)
                         {
                             PasswordReplacer pr2 = new PasswordReplacer();
-                            Console.WriteLine(website + ": " + password);
+                            Console.WriteLine($"Website: \"{website}\", Password: \"{password}\"");
 
                             pr2.ReplacePassword(Console.CursorTop - 1, website.Length + 2, 10000, password.Length);
                             return;
@@ -284,7 +328,6 @@ namespace PasswordManager
             await Task.Delay(delay);
             Console.SetCursorPosition(lineOffset, curserLine);
             Console.WriteLine(new string('*', passwordlength));
-            Console.SetCursorPosition(Console.CursorLeft, Console.CursorTop);
         }
 
     }
